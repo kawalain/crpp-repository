@@ -1,0 +1,33 @@
+// In the window's top-right corner, whatever the stage does. Its tip shows only while the panel is closed,
+// falling 4 px, and grows with it.
+let fit = 35/36
+// Clicked five times in a row, it splashes: it shrinks for a moment and throws drops out, which fall as they fade.
+let splash = ease(1, 700ms) first jump again @splashes curve linear
+let pop = splash<0.12 ? ease(splash/0.12) : 1-ease(min(1, (splash-0.12)/0.4))
+hit droplet (@W-18-35, 16, 35, 49) {
+  let over = ease(@hot, 150ms) first jump
+  let grow = ease(@hot, 140ms) first jump
+  about (17.5, 24.5) scale (1+0.08*grow)*(1-0.18*pop) {
+    path "M18 1C13 10 2 20 2 31a16 16 0 0 0 32 0C34 20 23 10 18 1Z"
+        color mix(mix(droplet, hl_text_dark, 92%), droplet, over) y (49-49*fit)/2 scale fit
+    path "M12 25 24 37M24 25 12 37" color mix(hl_text_dark, hl_text, over) y (49-49*fit)/2 scale fit width 4.4 caps flat
+        if @open
+  }
+  let tip = ease(@hot && !@open, 150ms) first jump
+  about (17.5, 24.5) scale 1+0.08*grow if tip>0 && !@open {
+    let tip_w = textw(tip_measure, @tr.tip_settings, 2000)+30
+    (@W-tip_w, @H+8-4*(1-tip), tip_w, 32) {
+      shadow alpha(tip_shadow, 0.2*tip) radius 11 blur 8 dy 2
+      fill alpha(surface, tip) radius 11
+      text @tr.tip_settings style droplet_tip color alpha(hl_text, tip)
+    }
+  }
+}
+(@W-18-17.5, 16+32) if @splashes>0 && splash<1 {
+  use splash_drop(dx = -52, dy = -18, t = splash, size = 0.3)
+  use splash_drop(dx = -34, dy = -34, t = splash, size = 0.22)
+  use splash_drop(dx = -12, dy = -40, t = splash, size = 0.18)
+  use splash_drop(dx = 10, dy = -30, t = splash, size = 0.2)
+  use splash_drop(dx = -62, dy = 4, t = splash, size = 0.2)
+  use splash_drop(dx = -24, dy = 6, t = splash, size = 0.26)
+}

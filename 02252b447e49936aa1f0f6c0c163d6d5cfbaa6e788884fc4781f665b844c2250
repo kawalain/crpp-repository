@@ -1,0 +1,141 @@
+// A code with STAR in it: stars in the sky, behind the cloud.
+repeat 5 if @stars {
+  let sx = @i==0 ? 0.07 : @i==1 ? 0.2 : @i==2 ? 0.37 : @i==3 ? 0.58 : 0.76
+  let sy = @i==0 ? 24 : @i==1 ? 56 : @i==2 ? 16 : @i==3 ? 44 : 20
+  let size = @i==1 || @i==3 ? 1.6 : 1.1
+  path "M5 0 6.2 3.8 10 5 6.2 6.2 5 10 3.8 6.2 0 5 3.8 3.8Z" (@W*sx, sy) color alpha(white, 0.9) scale size
+}
+// The Room's weather, from how busy it is: the sky darkens a step at a time, it rains from the third step and
+// lightning strikes in a storm. Nothing moves, so a step costs one frame. A light cloud only tints, as the text on
+// it is pale: greyed as the sky is, the names and the chat could no longer be read.
+let gloom = @weather==1 ? 0.14 : @weather==2 ? 0.26 : 0.4
+fill alpha(weather_sky, gloom) if @weather>0
+repeat 44 if @weather>=2 {
+  let f = @i*0.618034+0.31
+  let g = @i*0.4142+0.07
+  path "M4 0 0 10" (@W*(f-floor(f)), @H*(g-floor(g))) color alpha(rain, 0.75) width 1.6 caps round
+}
+path "M14 0 4 16H11L7 30 20 11H13L18 0Z" (@W*0.1, 22) color bolt scale 1.5 if @weather==3
+// The cloud, four circles and a rectangle, on the stage. Everything else keeps its size in the window.
+(@stage_x, @stage_y, 951, 692) scale @scale origin {
+  path "F1 M461 190A169 169 0 0 1 292 359A169 169 0 0 1 123 190A169 169 0 0 1 292 21A169 169 0 0 1 461 190Z M860 160A250 250 0 0 1 610 410A250 250 0 0 1 360 160A250 250 0 0 1 610 -90A250 250 0 0 1 860 160Z M1045 400A185 185 0 0 1 860 585A185 185 0 0 1 675 400A185 185 0 0 1 860 215A185 185 0 0 1 1045 400Z M330 405A180 180 0 0 1 150 585A180 180 0 0 1 -30 405A180 180 0 0 1 150 225A180 180 0 0 1 330 405Z M150 300H860V585H150Z"
+      color alpha(room_cloud_shadow, 0.14) y 33 blur 18 dy 6 if !@dark
+  path "F1 M461 190A169 169 0 0 1 292 359A169 169 0 0 1 123 190A169 169 0 0 1 292 21A169 169 0 0 1 461 190Z M860 160A250 250 0 0 1 610 410A250 250 0 0 1 360 160A250 250 0 0 1 610 -90A250 250 0 0 1 860 160Z M1045 400A185 185 0 0 1 860 585A185 185 0 0 1 675 400A185 185 0 0 1 860 215A185 185 0 0 1 1045 400Z M330 405A180 180 0 0 1 150 585A180 180 0 0 1 -30 405A180 180 0 0 1 150 225A180 180 0 0 1 330 405Z M150 300H860V585H150Z"
+      color room_cloud y 33 from_y 0 to_y 585
+  path "F1 M461 190A169 169 0 0 1 292 359A169 169 0 0 1 123 190A169 169 0 0 1 292 21A169 169 0 0 1 461 190Z M860 160A250 250 0 0 1 610 410A250 250 0 0 1 360 160A250 250 0 0 1 610 -90A250 250 0 0 1 860 160Z M1045 400A185 185 0 0 1 860 585A185 185 0 0 1 675 400A185 185 0 0 1 860 215A185 185 0 0 1 1045 400Z M330 405A180 180 0 0 1 150 585A180 180 0 0 1 -30 405A180 180 0 0 1 150 225A180 180 0 0 1 330 405Z M150 300H860V585H150Z"
+      color alpha(weather_cloud, gloom*(@dark ? 0.9 : 0.25)) y 33 if @weather>0
+}
+// What of the stage the window shows, and where the members and the chat go in it.
+let k = @scale
+let vis_w = @W/k
+let vis_h = @H/k
+let vis_left = 951/2-vis_w/2
+let vis_right = 951/2+vis_w/2
+let vis_top = 692/2-vis_h/2
+let vis_bottom = 692/2+vis_h/2
+let top = max(74+33, vis_top+20)
+let bottom = max(top+140/k, min(537+33, vis_bottom-74/k))
+let left = max(190, vis_left+20)
+let right = max(left+(219+250)/k, min(825, vis_right-20))
+let stage_left = @chat ? left-16/k : (left+min(762, right))/2-286/k
+let col_w = @chat ? 227 : 274
+let cols = @chat ? 1 : 2
+let rows = ceil(@members/cols)
+let members_h = (bottom-top)*k
+let pad = max(0, (members_h-min(rows, 8)*49)/2)
+report members_view = members_h
+report members_content = 2*pad+rows*49
+// .emoji-ring under .mute-others.
+let quiet = ease(@muted_all, 200ms) first jump
+note members_area (@stage_x+stage_left*k, @stage_y+top*k, cols*col_w+(cols-1)*24, members_h) clip soft_clip
+    fade_top @members_fade_top fade_bottom @members_fade_bottom {
+  repeat @members {
+    // .member.entering: someone who came after the first list rises and fades in.
+    let came = 1
+    if @member_new {
+      let rising = ease(1, 300ms) key @member_key
+      set came = rising
+    }
+    let row_y = pad+floor(@i/cols)*49+1-@members_scroll+8*(1-came)
+    // Every member has its hit, for the keyboard to go to; only those in view are drawn.
+    hit member note member ((@i-floor(@i/cols)*cols)*(col_w+24), row_y, col_w, 47) hit_index @member_slot opacity came {
+      if row_y+47>0 && row_y<members_h {
+        fill alpha(hl, 0.2) radius 14 if @hot
+        // Only this much changes while someone types.
+        note member_disc (6, 1.5, 44, 44)
+        let size = 36*(1+(0.8-1)*quiet)
+        // .emoji-ring::before fades in and grows from .82.
+        let ring = 22*(0.82+0.18*@member_level) if @member_level>0
+        fill alpha(hl, @member_level) (28-ring, 23.5-ring, 2*ring, 2*ring) ellipse if @member_level>0
+        picture muted (28-size/2, 23.5-size/2, size, size) opacity @member_offline ? 0.55 : 1 gray quiet if @member_muted
+        picture member (28-size/2, 23.5-size/2, size, size) opacity @member_offline ? 0.55 : 1 gray quiet
+            if !@member_muted
+        // A code with ZZZ in it: everyone dozes.
+        path "M1 1H7L1 8H7" (45, 3) color hl_text_soft width 1.8 if @sleepy
+        path "M1 1H7L1 8H7" (51, -2) color hl_text_soft width 1.4 scale 0.7 if @sleepy
+        text @member_name (58, 10.5, @W-58-12, 26) style member_name color @member_offline ? alpha(hl_text, 0.5) : hl_text
+      }
+    }
+  }
+}
+// A code with CAKE in it: a cake at the bottom of the window, with its candle lit.
+(@W/2-22, @H-18-44, 44, 44) if @cake {
+  fill alpha(hl_text, 0.18) (3, 37, 38, 6) ellipse
+  fill cake_sponge (8, 21, 28, 18) radius 4
+  fill cake_sponge (8, 29, 28, 3)
+  fill cake_cream (8, 21, 28, 7) radius 4
+  path "M8 26C11 26 11 31 14 31S17 26 20 26 23 31 26 31 29 26 32 26 35 29 36 29V26H8Z" color cake_cream
+  fill candle (20.5, 10, 3, 11) radius 1
+  path "M18 1C13 10 2 20 2 31a16 16 0 0 0 32 0C34 20 23 10 18 1Z" (18.9, 1) color flame scale 0.17
+}
+slot chat (@stage_x+(left+219/k)*k, @stage_y+(top+7)*k, max(250, (right-left)*k-219), (bottom-top-7)*k) if @chat
+if @controls_shown {
+  use fab (18, @H-18-42, 42, 42) hit leave note fab_leave {
+    path "M19 12H5M11 6l-6 6 6 6" (10, 10) color @hot ? hl_text : hl_text_soft scale 22/24 width 3
+  }
+  // The speaker: shifted so that it stays in the middle, however many waves it has.
+  use fab(alarmed = @muted) (@W-68-42, @H-18-42, 42, 42) hit mute note fab_mute {
+    let ink = @muted ? white : @hot ? hl_text : hl_text_soft
+    let level = @volume<=0 ? 0 : @volume<34 ? 1 : @volume<67 ? 2 : 3
+    let at = 9+(@muted ? 0 : level<=1 ? 3.05 : level==2 ? 1.1 : -1.4)
+    path "M2.6,9 H5.6 L10.3,5.1 C10.9,4.6 11.8,5 11.8,5.8 V18.2 C11.8,19 10.9,19.4 10.3,18.9 L5.6,15 H2.6 C2,15 1.5,14.5 1.5,13.9 V10.1 C1.5,9.5 2,9 2.6,9 Z"
+        (at+(@muted ? 2.5 : 0), 9) color ink
+    path "M3.2,4.6 L17,18.6" (at+2.5, 9) color ink width 2.1 if @muted
+    path "M14.6,9.2 C15.6,10.9 15.6,13.1 14.6,14.8" (at, 9) color ink width 2.1 if !@muted && level>0
+    path "M17.6,6.6 C19.8,9.9 19.8,14.1 17.6,17.4" (at, 9) color ink width 2.1 if !@muted && level>1
+    path "M21.3,4.2 C24.3,8.8 24.3,15.2 21.3,19.8" (at, 9) color ink width 2.1 if !@muted && level>2
+  }
+  use fab (@W-18-42, @H-18-42, 42, 42) hit more note fab_more {
+    repeat 3 {
+      fill @hot ? hl_text : hl_text_soft (21+(@i-1)*10-3, 18, 6, 6) ellipse
+    }
+  }
+  (@W-12-251, @H-72-230, 251, 230) if @options_open {
+    use panel_info
+    hit popup
+    text @tr.room_code (25, 24, 150, 41) style room_label color hl_text
+    hit opt_code note code (@W-25-90, 24, 90, 41) {
+      text @code style room_code color @hot ? hl_text_dark : hl_text
+    }
+    fill hl_pale2 (25, 70, @W-50, 2) radius 1
+    text @tr.room_public (25, 77, 150, 41) style room_label color @public_off ? alpha(hl_text, 0.5) : hl_text
+    use switch(on = @public, off = @public_off, ms = 0) (169, 84, 51, 27) hit opt_public note public
+    // .switch.pinned: a small bar across the knob.
+    fill alpha(hl_mid, @public_off ? 0.5 : 1) (169+(@public ? 37.5 : 13.5)-5.5, 84+13.5-1.5, 11, 3) radius 1.5
+        if @pin_public
+    text @tr.room_word_chat (25, 118, 150, 41) style room_label color @public_off ? alpha(hl_text, 0.5) : hl_text
+    use switch(on = @chat, off = @chat_off, ms = 0) (169, 125, 51, 27) hit opt_chat note chat
+    fill alpha(hl_mid, @chat_off ? 0.5 : 1) (169+(@chat ? 37.5 : 13.5)-5.5, 125+13.5-1.5, 11, 3) radius 1.5 if @pin_chat
+    // The Mini window: a small one, always on top, with the discs and mute.
+    fill hl_pale2 (25, 164, @W-50, 2) radius 1
+    hit opt_mini (25, 171, @W-50, 41) {
+      text @tr.mini_open style room_label color @hot ? hl_text_dark : hl_text
+    }
+  }
+  (@W-12-200, @H-72-50, 200, 50) if @mute_popup_open {
+    use panel_info
+    hit popup
+    text @volume_text (14, 14, 42, 22) style volume_text color hl_text
+    use slider(at = @volume/100) (64, 14, 122, 22) hit volume note volume
+  }
+}
